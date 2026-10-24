@@ -12,6 +12,7 @@ let id = 0; const pend = {};
 s.onmessage = e => { const m = JSON.parse(e.data); if (m.id && pend[m.id]) { pend[m.id](m.result); delete pend[m.id]; } };
 const send = (method, params = {}) => new Promise(r => { pend[++id] = r; s.send(JSON.stringify({ id, method, params })); });
 await send('Emulation.setDeviceMetricsOverride', { width: +w, height: +h, deviceScaleFactor: 2, mobile: true });
+if (process.env.DARK) await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
 await send('Page.enable');
 await send('Page.navigate', { url });
 await sleep(4000);

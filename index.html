@@ -197,11 +197,12 @@ Spring Boot
 <section id="server" class="wrap block">
   <p class="eyebrow center">Running Daily</p>
   <h2 class="mega center"><span class="grad">매일 도는 것들.</span></h2>
-  <p class="sub center">홈서버에서 24시간 돌아가는 네 가지. 하나씩 골라 보세요.</p>
+  <p class="sub center">홈서버에서 24시간 돌아가는 다섯 가지. 하나씩 골라 보세요.</p>
 
   <div class="tabs" role="tablist" aria-label="서버 서비스">
     <button role="tab" aria-selected="true" aria-controls="s1" id="t1">자비스</button>
     <button role="tab" aria-selected="false" aria-controls="s2" id="t2">주식 브리핑</button>
+    <button role="tab" aria-selected="false" aria-controls="s5" id="t5">자동매매</button>
     <button role="tab" aria-selected="false" aria-controls="s3" id="t3">AI 오피스</button>
     <button role="tab" aria-selected="false" aria-controls="s4" id="t4">홈서버</button>
   </div>
@@ -220,6 +221,13 @@ Spring Boot
       <p>토스 Open API·네이버·DART에서 매수 전 체크리스트 데이터를 뽑아 매일 브리핑 웹으로 보여 줍니다. 매매 판단은 코드가 하지 않습니다.</p>
       <p class="aside">신호별 20거래일 전진 검증이 기준(8건·구간 4개·상승/하락장 각 2번)을 채웠는지 표시하고, 내가 누른 관심·보류·제외를 20거래일 뒤 시장 대비로 자동 채점합니다.</p>
       <p class="tech">Python · pandas · 표준 라이브러리 서버 · systemd</p>
+    </article>
+    <article class="panel" id="s5" role="tabpanel" aria-labelledby="t5">
+      <p class="eyebrow">자동화 · 모의투자</p>
+      <h3>주식 자동매매</h3>
+      <p>종목의 시초가 범위 돌파를 홈서버가 감시해 폰으로 알려 주고, 정해 둔 규칙대로 모의 계좌에 주문까지 내는 자동매매를 만들고 있습니다. 미장은 Alpaca 모의투자, 국장은 한국투자증권 모의 계좌에 연결합니다.</p>
+      <p class="aside">주문 전에 반드시 위험 검사를 통과해야 하고(1회 최대 손실·하루 한도), 기본값은 꺼져 있어 파일 하나로만 켭니다. 실전 계좌 자동 주문은 만들지 않았고, 실전 전환은 제가 직접 합니다.</p>
+      <p class="tech">Python · Alpaca API · 한투 모의 API · ntfy · systemd</p>
     </article>
     <article class="panel" id="s3" role="tabpanel" aria-labelledby="t3">
       <p class="eyebrow">개발 도구</p>

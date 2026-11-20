@@ -40,55 +40,62 @@
   };
   addEventListener('scroll', markChipOnce, { passive: true }); markChipOnce();
 
-  /* ── 첫 화면 입자 구 ── */
+  /* ── 첫 화면 입자 구 (자비스 오브처럼: 중심 광채 + 둥근 입자 + 가산 합성) ── */
   const cv = $('.orb')[0];
   if (cv) {
     const ctx = cv.getContext('2d');
     const hero = cv.parentElement;
-    const N = innerWidth < 720 ? 2400 : 3600;
+    const N = innerWidth < 720 ? 900 : 1500;
     const P = [];
     for (let i = 0; i < N; i++) {   // 피보나치 구
       const y = 1 - (i + 0.5) * 2 / N, r = Math.sqrt(1 - y * y), a = i * 2.399963, ang = Math.random() * 6.283;
-      P.push({ x: Math.cos(a) * r, y, z: Math.sin(a) * r, px: 0, py: 0, vx: 0, vy: 0, rx: Math.cos(ang), ry: Math.sin(ang), s: 0.6 + Math.random() * 0.8, acc: Math.random() < 0.18 });
+      P.push({ x: Math.cos(a) * r, y, z: Math.sin(a) * r, px: 0, py: 0, vx: 0, vy: 0, rx: Math.cos(ang), ry: Math.sin(ang),
+               hj: (Math.random() - 0.5) * 34, seed: Math.random() * 6.283 });
     }
-    let W = 0, dpr = 1, R = 0, mx = -9999, my = -9999, running = false, idle = 0;
-    const ink = '#f5f5f7', acc = '#7fb2ff';
-    const size = () => { const b = cv.getBoundingClientRect(); W = b.width; dpr = Math.min(devicePixelRatio || 1, 2); cv.width = Math.round(W * dpr); cv.height = Math.round(W * dpr); R = W * 0.38; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+    let W = 0, dpr = 1, R = 0, mx = -9999, my = -9999, running = false, idle = 0, glow = 0.25, tm = 0;
+    const HUE = 205;
+    const size = () => { const b = cv.getBoundingClientRect(); W = b.width; dpr = Math.min(devicePixelRatio || 1, 2); cv.width = Math.round(W * dpr); cv.height = Math.round(W * dpr); R = W * 0.3; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
     const scatter = () => { for (const p of P) { p.px = W / 2 + (Math.random() - 0.5) * W * 1.8; p.py = W / 2 + (Math.random() - 0.5) * W * 1.8; p.vx = p.vy = 0; } };
     const frame = () => {
       const sd = clamp(scrollY / (hero.offsetHeight * 0.8), 0, 1);       // 스크롤하면 풀어진다
       const rot = 0.5 + scrollY * 0.004;                                   // 스크롤에 따라서만 돈다
       const cs = Math.cos(rot), sn = Math.sin(rot), tilt = 0.32, ct = Math.cos(tilt), st = Math.sin(tilt);
-      const cx = W / 2, cy = W / 2, rad = Math.max(70, W * 0.16);
+      const cx = W / 2, cy = W / 2, rad = Math.max(70, W * 0.16), F = 2.4;
+      const near = Math.hypot(mx - cx, my - cy) < W * 0.5 ? 1 : 0;
+      glow += ((0.25 + near * 0.35) - glow) * 0.08;                        // 마우스가 오면 빛이 밝아진다
       let energy = 0;
       ctx.clearRect(0, 0, W, W);
+      const fade = (1 - sd * 0.85);
+      // 중심 광채
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 1.75);
+      g.addColorStop(0, `hsla(${HUE},100%,72%,${(0.34 + glow * 0.4) * fade})`);
+      g.addColorStop(0.5, `hsla(${HUE},95%,60%,${0.13 * fade})`);
+      g.addColorStop(1, 'hsla(0,0%,0%,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, W);
       ctx.globalCompositeOperation = 'lighter';
-      const fade = (1 - sd * 0.8) * (W < 500 ? 0.8 : 1);
-      for (let pass = 0; pass < 2; pass++) {
-        ctx.fillStyle = pass ? acc : ink;
-        for (const p of P) {
-          if (p.acc !== !!pass) continue;
-          const x1 = p.x * cs + p.z * sn, z1 = -p.x * sn + p.z * cs;
-          const y2 = p.y * ct - z1 * st, z2 = p.y * st + z1 * ct;
-          const tx = cx + x1 * R + p.rx * sd * R * 1.1;
-          const ty = cy + y2 * R + p.ry * sd * R * 0.9 + sd * sd * R * 0.7;
-          if (reduce) { p.px = tx; p.py = ty; }
-          else {
-            p.vx += (tx - p.px) * 0.055; p.vy += (ty - p.py) * 0.055;
-            const dx = p.px - mx, dy = p.py - my, d = Math.hypot(dx, dy);
-            if (d < rad && d > 0.01) { const f = (1 - d / rad); const k = f * f * 5.5; p.vx += dx / d * k; p.vy += dy / d * k; }
-            p.vx *= 0.86; p.vy *= 0.86; p.px += p.vx; p.py += p.vy;
-            energy += Math.abs(p.vx) + Math.abs(p.vy);
-          }
-          const depth = (z2 + 1) / 2;
-          ctx.globalAlpha = (0.1 + 0.55 * depth) * fade;
-          const s = (0.9 + 1.3 * depth) * p.s;
-          ctx.fillRect(p.px - s / 2, p.py - s / 2, s, s);
+      for (const p of P) {
+        const pr = 1 + (reduce ? 0 : 0.04 * Math.sin(tm + p.seed));
+        const x1 = p.x * pr * cs + p.z * pr * sn, z1 = -p.x * pr * sn + p.z * pr * cs;
+        const y2 = p.y * pr * ct - z1 * st, z2 = p.y * pr * st + z1 * ct;
+        const sc = F / (F - z2), depth = (z2 + 1) / 2;
+        const tx = cx + x1 * R * sc + p.rx * sd * R * 1.1;
+        const ty = cy + y2 * R * sc + p.ry * sd * R * 0.9 + sd * sd * R * 0.7;
+        if (reduce) { p.px = tx; p.py = ty; }
+        else {
+          p.vx += (tx - p.px) * 0.055; p.vy += (ty - p.py) * 0.055;
+          const dx = p.px - mx, dy = p.py - my, d = Math.hypot(dx, dy);
+          if (d < rad && d > 0.01) { const f = (1 - d / rad); const k = f * f * 5.5; p.vx += dx / d * k; p.vy += dy / d * k; }
+          p.vx *= 0.86; p.vy *= 0.86; p.px += p.vx; p.py += p.vy;
+          energy += Math.abs(p.vx) + Math.abs(p.vy);
         }
+        const r = Math.max(0.4, (0.7 + depth * 1.9) * sc * (0.85 + glow * 0.3) * clamp(W / 640, 0.65, 1));
+        ctx.beginPath(); ctx.arc(p.px, p.py, r, 0, 7);
+        ctx.fillStyle = `hsla(${HUE + p.hj},95%,${58 + depth * 30}%,${(0.18 + depth * 0.7) * fade})`; ctx.fill();
       }
-      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+      ctx.globalCompositeOperation = 'source-over';
       return energy / N;
     };
+    // 빛은 마우스가 오가는 동안만 변하고, 가만히 있으면 멈춘다
     const loop = () => { const e = frame(); idle = e < 0.01 ? idle + 1 : 0; if (idle > 20) { running = false; return; } requestAnimationFrame(loop); };
     const kick = () => { idle = 0; if (!running && !reduce) { running = true; requestAnimationFrame(loop); } };
     size(); if (!reduce) scatter();
@@ -96,7 +103,7 @@
     addEventListener('resize', () => { size(); reduce ? frame() : kick(); });
     if (!reduce) {
       addEventListener('scroll', () => { if (scrollY < hero.offsetHeight * 1.2) kick(); }, { passive: true });
-      const move = (e) => { const b = cv.getBoundingClientRect(); mx = e.clientX - b.left; my = e.clientY - b.top; kick(); };
+      const move = (e) => { const b = cv.getBoundingClientRect(); mx = e.clientX - b.left; my = e.clientY - b.top; tm = e.clientX * 0.01; kick(); };
       addEventListener('pointermove', move, { passive: true });
       addEventListener('pointerdown', move, { passive: true });
       document.addEventListener('pointerleave', () => { mx = my = -9999; kick(); });
